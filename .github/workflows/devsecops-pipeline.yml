@@ -70,7 +70,7 @@ jobs:
 
     # 9. Build Docker Image
     - name: Build Docker Image
-      run: docker build -t ai-service:latest .
+      run: docker build -t ai-service:latest ./ai-service
 
     # 10. Container Scan
     - name: Run Container Scan
