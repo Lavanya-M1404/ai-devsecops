@@ -9,30 +9,47 @@ jobs:
   security-deploy:
     runs-on: ubuntu-latest
 
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
 
+    # ---------------------------
     # 1. Checkout Code
+    # ---------------------------
     - name: Checkout Code
       uses: actions/checkout@v4
 
+    # ---------------------------
     # 2. Setup Python
+    # ---------------------------
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
+    # ---------------------------
     # 3. SAST - Bandit
+    # ---------------------------
     - name: Install Bandit
       run: pip install bandit
 
     - name: Run SAST
       run: bandit -r . -ll || true
 
-    # 4. Install Trivy (FIXED)
+    # ---------------------------
+    # 4. Install Trivy (FIXED WAY)
+    # ---------------------------
     - name: Install Trivy
-      uses: aquasecurity/trivy-action@0.24.0
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget
+        wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.69.3_Linux-64bit.deb
+        sudo dpkg -i trivy_0.69.3_Linux-64bit.deb
 
+    # ---------------------------
     # 5. SCA Scan (Filesystem)
+    # ---------------------------
     - name: Run SCA Scan
       run: |
         trivy fs . \
@@ -40,7 +57,9 @@ jobs:
         --severity HIGH,CRITICAL \
         --exit-code 0
 
+    # ---------------------------
     # 6. SBOM - Syft
+    # ---------------------------
     - name: Install Syft
       run: |
         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh
@@ -48,11 +67,15 @@ jobs:
     - name: Generate SBOM
       run: syft dir:. -o json > sbom.json
 
+    # ---------------------------
     # 7. Build Docker Image
+    # ---------------------------
     - name: Build Docker Image
       run: docker build -t ai-service:latest .
 
+    # ---------------------------
     # 8. Container Scan
+    # ---------------------------
     - name: Run Container Scan
       run: |
         trivy image ai-service:latest \
@@ -60,42 +83,59 @@ jobs:
         --severity HIGH,CRITICAL \
         --exit-code 0
 
+    # ---------------------------
     # 9. Login to DockerHub
+    # ---------------------------
     - name: Login to DockerHub
       run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
+    # ---------------------------
     # 10. Tag Image
+    # ---------------------------
     - name: Tag Image
       run: docker tag ai-service:latest ${{ secrets.DOCKER_USERNAME }}/ai-service:latest
 
+    # ---------------------------
     # 11. Push Image
+    # ---------------------------
     - name: Push Image
       run: docker push ${{ secrets.DOCKER_USERNAME }}/ai-service:latest
 
+    # ---------------------------
     # 12. Setup kubectl
+    # ---------------------------
     - name: Setup kubectl
       uses: azure/setup-kubectl@v4
 
+    # ---------------------------
     # 13. Configure Kubeconfig
+    # ---------------------------
     - name: Set Kubeconfig
       run: |
         echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
-        export KUBECONFIG=$PWD/kubeconfig
 
+    # ---------------------------
     # 14. Deploy to Kubernetes
+    # ---------------------------
     - name: Update Deployment
+      env:
+        KUBECONFIG: ${{ github.workspace }}/kubeconfig
       run: |
-        export KUBECONFIG=$PWD/kubeconfig
         kubectl set image deployment/ai-service \
         ai-service=${{ secrets.DOCKER_USERNAME }}/ai-service:latest
 
+    # ---------------------------
     # 15. Verify Deployment
+    # ---------------------------
     - name: Verify Deployment
+      env:
+        KUBECONFIG: ${{ github.workspace }}/kubeconfig
       run: |
-        export KUBECONFIG=$PWD/kubeconfig
         kubectl rollout status deployment/ai-service
 
+    # ---------------------------
     # 16. Upload SBOM
+    # ---------------------------
     - name: Upload SBOM
       uses: actions/upload-artifact@v4
       with:
