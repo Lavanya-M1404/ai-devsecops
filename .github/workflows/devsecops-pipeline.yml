@@ -31,13 +31,14 @@ jobs:
     - name: Run SAST
       run: bandit -r . -ll || true
 
-    # 4. Install Trivy (STABLE)
+    # 4. Install Trivy (stable way)
     - name: Install Trivy
       run: |
         sudo apt-get update
         sudo apt-get install -y wget
-        wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.69.3_Linux-64bit.deb
-        sudo dpkg -i trivy_0.69.3_Linux-64bit.deb
+        LATEST=$(curl -s https://api.github.com/repos/aquasecurity/trivy/releases/latest | grep tag_name | cut -d '"' -f 4)
+        wget https://github.com/aquasecurity/trivy/releases/download/${LATEST}/trivy_${LATEST#v}_Linux-64bit.deb
+        sudo dpkg -i trivy_${LATEST#v}_Linux-64bit.deb
 
     # 5. SCA Scan
     - name: Run SCA Scan
@@ -47,26 +48,25 @@ jobs:
         --severity HIGH,CRITICAL \
         --exit-code 0
 
-    # ---------------------------
-    # 6. Install Syft (ROBUST FIX)
-    # ---------------------------
+    # 6. Install Syft (FIXED)
     - name: Install Syft
       run: |
-        SYFT_VERSION=v1.20.0
+        SYFT_VERSION=$(curl -s https://api.github.com/repos/anchore/syft/releases/latest | grep tag_name | cut -d '"' -f 4)
         wget https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/syft_${SYFT_VERSION#v}_linux_amd64.tar.gz
         tar -xzf syft_${SYFT_VERSION#v}_linux_amd64.tar.gz
         sudo mv syft /usr/local/bin/
         syft version
 
-    # ---------------------------
     # 7. Generate SBOM
-    # ---------------------------
     - name: Generate SBOM
       run: syft dir:. -o json > sbom.json
 
-    # 8. Generate SBOM
-    - name: Generate SBOM
-      run: syft dir:. -o json > sbom.json
+    # 8. Upload SBOM
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom
+        path: sbom.json
 
     # 9. Build Docker Image
     - name: Build Docker Image
@@ -80,45 +80,21 @@ jobs:
         --severity HIGH,CRITICAL \
         --exit-code 0
 
-    # 11. Login to DockerHub
+    # 11. Login to DockerHub (only if secrets exist)
     - name: Login to DockerHub
+      if: ${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
       run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
     # 12. Tag Image
     - name: Tag Image
+      if: ${{ secrets.DOCKER_USERNAME != '' }}
       run: docker tag ai-service:latest ${{ secrets.DOCKER_USERNAME }}/ai-service:latest
 
     # 13. Push Image
     - name: Push Image
+      if: ${{ secrets.DOCKER_USERNAME != '' }}
       run: docker push ${{ secrets.DOCKER_USERNAME }}/ai-service:latest
 
-    # 14. Setup kubectl
-    - name: Setup kubectl
-      uses: azure/setup-kubectl@v4
-
-    # 15. Configure Kubeconfig
-    - name: Set Kubeconfig
-      run: |
-        echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
-
-    # 16. Deploy
-    - name: Update Deployment
-      env:
-        KUBECONFIG: ${{ github.workspace }}/kubeconfig
-      run: |
-        kubectl set image deployment/ai-service \
-        ai-service=${{ secrets.DOCKER_USERNAME }}/ai-service:latest
-
-    # 17. Verify Deployment
-    - name: Verify Deployment
-      env:
-        KUBECONFIG: ${{ github.workspace }}/kubeconfig
-      run: |
-        kubectl rollout status deployment/ai-service
-
-    # 18. Upload SBOM
-    - name: Upload SBOM
-      uses: actions/upload-artifact@v4
-      with:
-        name: sbom
-        path: sbom.json
+    # 🚫 14. Kubernetes Deployment (DISABLED FOR NOW)
+    - name: Skip Deployment (Minikube not accessible)
+      run: echo "Skipping Kubernetes deploy - requires cloud cluster"
