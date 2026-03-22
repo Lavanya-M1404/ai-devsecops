@@ -47,15 +47,22 @@ jobs:
         --severity HIGH,CRITICAL \
         --exit-code 0
 
-    # 6. Install Syft (FIXED)
+    # ---------------------------
+    # 6. Install Syft (ROBUST FIX)
+    # ---------------------------
     - name: Install Syft
       run: |
-        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh
-        echo "/usr/local/bin" >> $GITHUB_PATH
+        SYFT_VERSION=v1.20.0
+        wget https://github.com/anchore/syft/releases/download/${SYFT_VERSION}/syft_${SYFT_VERSION#v}_linux_amd64.tar.gz
+        tar -xzf syft_${SYFT_VERSION#v}_linux_amd64.tar.gz
+        sudo mv syft /usr/local/bin/
+        syft version
 
-    # 7. Verify Syft (DEBUG STEP - IMPORTANT)
-    - name: Verify Syft Installation
-      run: syft version
+    # ---------------------------
+    # 7. Generate SBOM
+    # ---------------------------
+    - name: Generate SBOM
+      run: syft dir:. -o json > sbom.json
 
     # 8. Generate SBOM
     - name: Generate SBOM
