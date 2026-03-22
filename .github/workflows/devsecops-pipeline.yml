@@ -14,32 +14,24 @@ jobs:
 
     steps:
 
-    # ---------------------------
     # 1. Checkout Code
-    # ---------------------------
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    # ---------------------------
     # 2. Setup Python
-    # ---------------------------
     - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
-    # ---------------------------
     # 3. SAST - Bandit
-    # ---------------------------
     - name: Install Bandit
       run: pip install bandit
 
     - name: Run SAST
       run: bandit -r . -ll || true
 
-    # ---------------------------
-    # 4. Install Trivy (FIXED WAY)
-    # ---------------------------
+    # 4. Install Trivy (STABLE)
     - name: Install Trivy
       run: |
         sudo apt-get update
@@ -47,9 +39,7 @@ jobs:
         wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.69.3_Linux-64bit.deb
         sudo dpkg -i trivy_0.69.3_Linux-64bit.deb
 
-    # ---------------------------
-    # 5. SCA Scan (Filesystem)
-    # ---------------------------
+    # 5. SCA Scan
     - name: Run SCA Scan
       run: |
         trivy fs . \
@@ -57,25 +47,25 @@ jobs:
         --severity HIGH,CRITICAL \
         --exit-code 0
 
-    # ---------------------------
-    # 6. SBOM - Syft
-    # ---------------------------
+    # 6. Install Syft (FIXED)
     - name: Install Syft
       run: |
         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh
+        echo "/usr/local/bin" >> $GITHUB_PATH
 
+    # 7. Verify Syft (DEBUG STEP - IMPORTANT)
+    - name: Verify Syft Installation
+      run: syft version
+
+    # 8. Generate SBOM
     - name: Generate SBOM
       run: syft dir:. -o json > sbom.json
 
-    # ---------------------------
-    # 7. Build Docker Image
-    # ---------------------------
+    # 9. Build Docker Image
     - name: Build Docker Image
       run: docker build -t ai-service:latest .
 
-    # ---------------------------
-    # 8. Container Scan
-    # ---------------------------
+    # 10. Container Scan
     - name: Run Container Scan
       run: |
         trivy image ai-service:latest \
@@ -83,40 +73,28 @@ jobs:
         --severity HIGH,CRITICAL \
         --exit-code 0
 
-    # ---------------------------
-    # 9. Login to DockerHub
-    # ---------------------------
+    # 11. Login to DockerHub
     - name: Login to DockerHub
       run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
 
-    # ---------------------------
-    # 10. Tag Image
-    # ---------------------------
+    # 12. Tag Image
     - name: Tag Image
       run: docker tag ai-service:latest ${{ secrets.DOCKER_USERNAME }}/ai-service:latest
 
-    # ---------------------------
-    # 11. Push Image
-    # ---------------------------
+    # 13. Push Image
     - name: Push Image
       run: docker push ${{ secrets.DOCKER_USERNAME }}/ai-service:latest
 
-    # ---------------------------
-    # 12. Setup kubectl
-    # ---------------------------
+    # 14. Setup kubectl
     - name: Setup kubectl
       uses: azure/setup-kubectl@v4
 
-    # ---------------------------
-    # 13. Configure Kubeconfig
-    # ---------------------------
+    # 15. Configure Kubeconfig
     - name: Set Kubeconfig
       run: |
         echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
 
-    # ---------------------------
-    # 14. Deploy to Kubernetes
-    # ---------------------------
+    # 16. Deploy
     - name: Update Deployment
       env:
         KUBECONFIG: ${{ github.workspace }}/kubeconfig
@@ -124,18 +102,14 @@ jobs:
         kubectl set image deployment/ai-service \
         ai-service=${{ secrets.DOCKER_USERNAME }}/ai-service:latest
 
-    # ---------------------------
-    # 15. Verify Deployment
-    # ---------------------------
+    # 17. Verify Deployment
     - name: Verify Deployment
       env:
         KUBECONFIG: ${{ github.workspace }}/kubeconfig
       run: |
         kubectl rollout status deployment/ai-service
 
-    # ---------------------------
-    # 16. Upload SBOM
-    # ---------------------------
+    # 18. Upload SBOM
     - name: Upload SBOM
       uses: actions/upload-artifact@v4
       with:
