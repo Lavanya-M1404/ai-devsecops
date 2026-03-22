@@ -30,10 +30,7 @@ jobs:
 
     # 4. Install Trivy (FIXED)
     - name: Install Trivy
-      run: |
-        sudo apt-get install -y wget
-        wget https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.1_Linux-64bit.deb
-        sudo dpkg -i trivy_0.50.1_Linux-64bit.deb
+      uses: aquasecurity/trivy-action@0.24.0
 
     # 5. SCA Scan (Filesystem)
     - name: Run SCA Scan
@@ -55,7 +52,7 @@ jobs:
     - name: Build Docker Image
       run: docker build -t ai-service:latest .
 
-    # 8. Container Scan (FIXED)
+    # 8. Container Scan
     - name: Run Container Scan
       run: |
         trivy image ai-service:latest \
