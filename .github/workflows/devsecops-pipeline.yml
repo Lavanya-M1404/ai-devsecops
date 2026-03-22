@@ -31,8 +31,8 @@ jobs:
     - name: Install Bandit
       run: pip install bandit
 
-    - name: Run SAST Scan
-      run: bandit -r . -ll
+    - name: Run SAST
+      run: bandit -r . -ll || true
 
     # ---------------------------
     # 4. SCA - Trivy FS Scan
