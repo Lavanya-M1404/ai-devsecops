@@ -1,0 +1,142 @@
+{
+  "SchemaVersion": 2,
+  "Trivy": {
+    "Version": "0.69.3"
+  },
+  "ReportID": "019cd698-007b-7d4a-8d8a-a1bea7504054",
+  "CreatedAt": "2026-03-10T12:43:31.771872+05:30",
+  "ArtifactName": ".",
+  "ArtifactType": "filesystem",
+  "Results": [
+    {
+      "Target": "cosign.key",
+      "Class": "secret",
+      "Secrets": [
+        {
+          "RuleID": "private-key",
+          "Category": "AsymmetricPrivateKey",
+          "Severity": "HIGH",
+          "Title": "Asymmetric Private Key",
+          "StartLine": 2,
+          "EndLine": 10,
+          "Code": {
+            "Lines": [
+              {
+                "Number": 1,
+                "Content": "-----BEGIN ENCRYPTED SIGSTORE PRIVATE KEY-----",
+                "IsCause": false,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "-----BEGIN ENCRYPTED SIGSTORE PRIVATE KEY-----",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 2,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": true,
+                "LastCause": false
+              },
+              {
+                "Number": 3,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 4,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 5,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 6,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 7,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 8,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 9,
+                "Content": "****************************************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************************************",
+                "FirstCause": false,
+                "LastCause": false
+              },
+              {
+                "Number": 10,
+                "Content": "****************************************",
+                "IsCause": true,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "****************************************",
+                "FirstCause": false,
+                "LastCause": true
+              },
+              {
+                "Number": 11,
+                "Content": "-----END ENCRYPTED SIGSTORE PRIVATE KEY-----",
+                "IsCause": false,
+                "Annotation": "",
+                "Truncated": false,
+                "Highlighted": "-----END ENCRYPTED SIGSTORE PRIVATE KEY-----",
+                "FirstCause": false,
+                "LastCause": false
+              }
+            ]
+          },
+          "Match": "****************************************************************",
+          "Offset": 47
+        }
+      ]
+    }
+  ]
+}

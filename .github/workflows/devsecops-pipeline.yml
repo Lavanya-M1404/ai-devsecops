@@ -1,0 +1,123 @@
+name: DevSecOps Security Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  security-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    # ---------------------------
+    # 1. Checkout Code
+    # ---------------------------
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    # ---------------------------
+    # 2. Setup Python
+    # ---------------------------
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    # ---------------------------
+    # 3. SAST - Bandit
+    # ---------------------------
+    - name: Install Bandit
+      run: pip install bandit
+
+    - name: Run SAST Scan
+      run: bandit -r . -ll
+
+    # ---------------------------
+    # 4. SCA - Trivy FS Scan
+    # ---------------------------
+    - name: Install Trivy
+      uses: aquasecurity/trivy-action@master
+
+    - name: Run SCA Scan
+      run: trivy fs . --severity HIGH,CRITICAL --exit-code 1
+
+    # ---------------------------
+    # 5. SBOM - Syft
+    # ---------------------------
+    - name: Install Syft
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh
+
+    - name: Generate SBOM
+      run: syft dir:. -o json > sbom.json
+
+    # ---------------------------
+    # 6. Build Docker Image
+    # ---------------------------
+    - name: Build Docker Image
+      run: docker build -t ai-service:latest .
+
+    # ---------------------------
+    # 7. Container Scan
+    # ---------------------------
+    - name: Run Container Scan
+      run: |
+        trivy image ai-service:latest \
+        --severity HIGH,CRITICAL \
+        --exit-code 1 \
+        --format table
+
+    # ---------------------------
+    # 8. Push Image (Optional - if using DockerHub/ECR)
+    # ---------------------------
+    - name: Login to DockerHub
+      if: success()
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+    - name: Tag Image
+      run: docker tag ai-service:latest ${{ secrets.DOCKER_USERNAME }}/ai-service:latest
+
+    - name: Push Image
+      run: docker push ${{ secrets.DOCKER_USERNAME }}/ai-service:latest
+
+    # ---------------------------
+    # 9. Setup kubectl
+    # ---------------------------
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v4
+
+    # ---------------------------
+    # 10. Configure Kubeconfig
+    # ---------------------------
+    - name: Set Kubeconfig
+      run: |
+        echo "${{ secrets.KUBE_CONFIG }}" > kubeconfig
+        export KUBECONFIG=$PWD/kubeconfig
+
+    # ---------------------------
+    # 11. Update Deployment Image
+    # ---------------------------
+    - name: Update Kubernetes Deployment
+      run: |
+        export KUBECONFIG=$PWD/kubeconfig
+        kubectl set image deployment/ai-service \
+        ai-service=${{ secrets.DOCKER_USERNAME }}/ai-service:latest
+
+    # ---------------------------
+    # 12. Verify Deployment
+    # ---------------------------
+    - name: Verify Deployment
+      run: |
+        export KUBECONFIG=$PWD/kubeconfig
+        kubectl rollout status deployment/ai-service
+
+    # ---------------------------
+    # 13. Upload SBOM (Optional)
+    # ---------------------------
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom
+        path: sbom.json

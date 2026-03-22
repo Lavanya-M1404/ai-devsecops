@@ -1,0 +1,6 @@
+.env
+cosign.key
+cosign.pub
+cosign.sig
+cosign.password
+cosign.key.password
